@@ -430,7 +430,7 @@ def pc_sampler(config, net, sde, predictor, corrector, shape, snr, x0=None, n_st
     return x_mean if denoise else x, x_generated
 
 
-def pc_sampler_video_ar(config, net, sde, predictor, corrector, shape, snr, x0=None, n_steps=1, probability_flow=False, alpha=1., mult=10, transform_init=None, num_steps=10, overlap=1,
+def generate_ar_2d(config, net, sde, predictor, corrector, shape, snr, x0=None, n_steps=1, probability_flow=False, alpha=1., mult=10, transform_init=None, num_steps=10, overlap=1,
                continuous=False, device='cpu', denoise=True, dtype='float32', eps=1e-3):
     dtype_torch = getattr(torch, dtype)
     corrector_update_fn = functools.partial(shared_corrector_update_fn,
@@ -449,7 +449,7 @@ def pc_sampler_video_ar(config, net, sde, predictor, corrector, shape, snr, x0=N
     ns = num_steps
     ncomp = config.num_components
     ol = overlap
-    b = int(ns//(nf-ol)+1)      # the number of samples that need to generate
+    b = int(np.ceil((ns-ol)/(nf-ol)))      # the number of samples that need to generate
     ns_real = b*(nf-ol)+ol       # exact number of steps generated
     shape = [len(x0), nf, ncomp+config.num_conditions, config.image_size, config.image_size]       # batch*nf*(c+npara)*h*w
 
@@ -501,7 +501,7 @@ def pc_sampler_video_ar(config, net, sde, predictor, corrector, shape, snr, x0=N
     return torch.cat(pred, dim=1).detach().cpu().numpy() if denoise else x, x_generated
 
 
-def pc_sampler_video1d_ar(config, net, sde, predictor, corrector, shape, snr, x0=None, n_steps=1, probability_flow=False, alpha=1., mult=10, transform_init=None, num_steps=10, overlap=1,
+def generate_ar_1d(config, net, sde, predictor, corrector, shape, snr, x0=None, n_steps=1, probability_flow=False, alpha=1., mult=10, transform_init=None, num_steps=10, overlap=1,
                continuous=False, device='cpu', denoise=True, dtype='float32', eps=1e-3):
     dtype_torch = getattr(torch, dtype)
     corrector_update_fn = functools.partial(shared_corrector_update_fn,
@@ -519,7 +519,7 @@ def pc_sampler_video1d_ar(config, net, sde, predictor, corrector, shape, snr, x0
     ns = num_steps
     ncomp = config.num_components
     ol = overlap
-    b = int(ns//(nf-ol)+1)      # the number of samples that need to generate
+    b = int(np.ceil((ns-ol)/(nf-ol)))      # the number of samples that need to generate
     ns_real = b*(nf-ol)+ol       # exact number of steps generated
     shape = [config.num_samples, nf, ncomp+config.num_conditions, config.image_size]       # batch*nf*(c+npara)*h
 
@@ -576,21 +576,21 @@ def s3gm_sample_2d(config, net, sde, y, transform, corrector, n_steps=5, alpha=1
                               device='cpu', dtype='float32', eps=1e-12, 
                               probability_flow=False, continuous=True):
     if T_prime_y > 0:
-        x_y, _, _ = complete_video_pc_dps(config, net, sde, y, transform, corrector, n_steps=n_steps, 
-                                    alpha=alpha, beta=0, gamma1=beta, gamma2=beta, num_steps=T_prime_y, overlap=overlap,
+        x_y, _, _ = generate_parallel_2d(config, net, sde, y, transform, corrector, n_steps=n_steps, 
+                                    alpha=alpha, beta1=beta, beta2=beta, num_steps=T_prime_y, overlap=overlap,
                                     snr=snr, device=device, dtype=dtype, eps=eps, save_sample_path=False, 
                                     probability_flow=probability_flow, continuous=continuous)
     else:
         x_y = y
     if T_prime > x_y.shape[1]:
         x0 = x_y[:, -overlap:]
-        T_prime_extra = T_prime - x_y.shape[1] - 1
+        T_prime_extra = T_prime - x_y.shape[1]
         transform_init = lambda x: x[:, :overlap]
-        x_extra, _ = pc_sampler_video_ar(config, net, sde, None, corrector=corrector, shape=None, snr=snr, x0=x0, 
+        x_extra, _ = generate_ar_2d(config, net, sde, None, corrector=corrector, shape=None, snr=snr, x0=x0, 
                                     n_steps=n_steps, probability_flow=probability_flow, 
                                     alpha=gamma, mult=gamma, num_steps=T_prime_extra, overlap=overlap, transform_init=transform_init,
                                     continuous=continuous, device=device, denoise=True, dtype=dtype, eps=eps)
-    return np.concatenate([x_y, x_extra[:, overlap:]], axis=1) if T_prime > T_prime_y else x_y
+    return np.concatenate([x_y, x_extra[:, overlap:]], axis=1) if T_prime > x_y.shape[1] else x_y
 
 
 def s3gm_sample_1d(config, net, sde, y, transform, corrector, n_steps=5, alpha=1., beta=0.4, gamma=0.5, snr=0.128, std_y=None,
@@ -598,24 +598,24 @@ def s3gm_sample_1d(config, net, sde, y, transform, corrector, n_steps=5, alpha=1
                               device='cpu', dtype='float32', eps=1e-12, 
                               probability_flow=False, continuous=True):
     if T_prime_y > 0:
-        x_y, _, _ = complete_video1d_pc_dps(config, net, sde, y, transform, corrector, n_steps=n_steps, 
-                                    alpha=alpha, beta=0, gamma1=beta, gamma2=beta, num_steps=T_prime_y, overlap=overlap,
+        x_y, _, _ = generate_parallel_1d(config, net, sde, y, transform, corrector, n_steps=n_steps, 
+                                    alpha=alpha, beta1=beta, beta2=beta, num_steps=T_prime_y, overlap=overlap,
                                     snr=snr, device=device, dtype=dtype, eps=eps, save_sample_path=False, 
                                     probability_flow=probability_flow, continuous=continuous)
     else:
         x_y = y
     if T_prime > x_y.shape[1]:
         x0 = x_y[:, -overlap:]
-        T_prime_extra = T_prime - x_y.shape[1] - 1
+        T_prime_extra = T_prime - x_y.shape[1]
         transform_init = lambda x: x[:, :overlap]
-        x_extra, _ = pc_sampler_video1d_ar(config, net, sde, None, corrector=corrector, shape=None, snr=snr, x0=x0, 
+        x_extra, _ = generate_ar_1d(config, net, sde, None, corrector=corrector, shape=None, snr=snr, x0=x0, 
                                     n_steps=n_steps, probability_flow=probability_flow, 
                                     alpha=gamma, mult=gamma, num_steps=T_prime_extra, overlap=overlap, transform_init=transform_init,
                                     continuous=continuous, device=device, denoise=True, dtype=dtype, eps=eps)
-    return np.concatenate([x_y, x_extra[:, overlap:]], axis=1) if T_prime > T_prime_y else x_y
+    return np.concatenate([x_y, x_extra[:, overlap:]], axis=1) if T_prime > x_y.shape[1] else x_y
 
 
-def complete_video_pc_dps(config, net, sde, y, transform, corrector, n_steps=5, alpha=1., beta=None, gamma1=100., gamma2=100, snr=0.128, std_y=None, gamma=1.e-2,
+def generate_parallel_2d(config, net, sde, y, transform, corrector, n_steps=5, alpha=1., beta1=100., beta2=100, snr=0.128, std_y=None, gamma=1.e-2,
                           num_steps=10, overlap=1,
                               device='cpu', dtype='float32', eps=1e-3, save_sample_path=False,
                               probability_flow=False, continuous=True, data_scalar=None):
@@ -636,7 +636,7 @@ def complete_video_pc_dps(config, net, sde, y, transform, corrector, n_steps=5, 
     ns = num_steps
     ncomp = config.num_components
     ol = overlap
-    b = int(ns//(nf-ol)+1)      # the number of samples that need to generate
+    b = int(np.ceil((ns-ol)/(nf-ol)))      # the number of samples that need to generate
     ns_real = b*(nf-ol)+ol       # exact number of steps generated
     nc = config.num_conditions
     shape = [len(y), b, nf, ncomp+nc, config.image_size, config.image_size]       # batch*b*nf*(c+npara)*h*w
@@ -717,24 +717,13 @@ def complete_video_pc_dps(config, net, sde, y, transform, corrector, n_steps=5, 
                 loss_consis_para = torch.sum(loss_consis_para, dim=-1).mean()
                 # loss_consis_para = loss_consis_para/loss_consis_para.detach().sqrt()    # normalize
 
-                if config.physics_guide:
-                    loss_eq, scalar2 = voriticity_residual(x0_hat, ns_real, 1., data_scalar)
-                    scalar2 = scalar2.detach()
-                    loss = alpha * loss_dps + beta * loss_eq + gamma1 * loss_consis + gamma2 * loss_consis_para  # /loss_dps.detach().sqrt()  /scalar2.mean().sqrt()
-                    tqdm_setting.set_description(f'loss total: {loss.item():.5e} | loss dps: {alpha * loss_dps.item():.5e} | loss eq: {beta(t) * loss_eq.item():.5e} | loss consis: {gamma1 * loss_consis.item():.5e}')
-                    losses['loss'].append(loss.item())
-                    losses['loss_eq'].append(loss_eq.item())
-                    losses['loss_dps'].append(loss_dps.item())
-                    losses['loss_consis'].append(loss_consis.item())
-                    losses['loss_consis_para'].append(loss_consis_para.item())
-                    assert (not torch.isnan(loss_eq))
-                else:
-                    loss = alpha * loss_dps + gamma1 * loss_consis + gamma2 * loss_consis_para
-                    tqdm_setting.set_description(f'loss total: {loss.item():.5e} | loss dps: {alpha * loss_dps.item():.5e} | loss consis: {gamma1 * loss_consis.item():.5e}')
-                    losses['loss'].append(loss.item())
-                    losses['loss_dps'].append(loss_dps.item())
-                    losses['loss_consis'].append(loss_consis.item())
-                    losses['loss_consis_para'].append(loss_consis_para.item())
+                loss = alpha * loss_dps + beta1 * loss_consis + beta2 * loss_consis_para
+                tqdm_setting.set_description(f'loss total: {loss.item():.5e} | loss obs.: {alpha * loss_dps.item():.5e} | loss consis.: {beta1 * loss_consis.item():.5e}')
+                losses['loss'].append(loss.item())
+                losses['loss_dps'].append(loss_dps.item())
+                losses['loss_consis'].append(loss_consis.item())
+                losses['loss_consis_para'].append(loss_consis_para.item())
+
                 dx = torch.autograd.grad(loss, inp)[0]
                 dx = torch.clamp(dx, min=-1e8, max=1e8)
                 temp = temp_u - dx     # (batch*b)*(nf*c+npara)*h*w
@@ -750,7 +739,7 @@ def complete_video_pc_dps(config, net, sde, y, transform, corrector, n_steps=5, 
     return x_to_sample(x_mean).detach().cpu().numpy(), x_generated if save_sample_path else None, losses
 
 
-def complete_video1d_pc_dps(config, net, sde, y, transform, corrector, n_steps=5, alpha=1., beta=None, gamma1=100., gamma2=100, snr=0.128, std_y=None, gamma=1.e-2,
+def generate_parallel_1d(config, net, sde, y, transform, corrector, n_steps=5, alpha=1., beta1=100., beta2=100, snr=0.128, std_y=None, gamma=1.e-2,
                           num_steps=10, overlap=1,
                               device='cpu', dtype='float32', eps=1e-3, save_sample_path=False,
                               probability_flow=False, continuous=True, data_scalar=None):
@@ -771,7 +760,7 @@ def complete_video1d_pc_dps(config, net, sde, y, transform, corrector, n_steps=5
     ns = num_steps
     ncomp = config.num_components
     ol = overlap
-    b = int(ns//(nf-ol)+1)      # the number of samples that need to generate
+    b = int(np.ceil((ns-ol)/(nf-ol)))      # the number of samples that need to generate
     ns_real = b*(nf-ol)+ol       # exact number of steps generated
     shape = [len(y), b, nf, ncomp+config.num_conditions, config.image_size]       # batch*b*nf*(c+npara)*h
     # shape_sample = [config.num_samples, ns_real, ncomp+config.num_modals-1, config.image_size]     # batch*ns_real*(c+npara)*h
@@ -844,25 +833,12 @@ def complete_video1d_pc_dps(config, net, sde, y, transform, corrector, n_steps=5
                 loss_consis_para = torch.sum(loss_consis_para, dim=0)
                 # loss_consis_para = loss_consis_para/loss_consis_para.detach().sqrt()    # normalize
 
-                if config.physics_guide:
-                    loss_eq, _ = kse_residual(inp, nf, 0.5, data_scalar)       # x0_hat_temp, ns_real
-                    # scalar2 = scalar2.detach()
-                    loss_eq = loss_eq/loss_eq.detach().sqrt()
-                    loss = alpha * loss_dps + beta(t) * loss_eq + gamma1 * loss_consis + gamma2 * loss_consis_para  # /loss_dps.detach().sqrt()  /scalar2.mean().sqrt()
-                    tqdm_setting.set_description(f'loss total: {loss.item():.5e} | loss dps: {alpha * loss_dps.item():.5e} | loss eq: {beta(t) * loss_eq.item():.5e} | loss consis: {gamma1 * loss_consis.item():.5e}')
-                    losses['loss'].append(loss.item())
-                    losses['loss_eq'].append(loss_eq.item())
-                    losses['loss_dps'].append(loss_dps.item())
-                    losses['loss_consis'].append(loss_consis.item())
-                    losses['loss_consis_para'].append(loss_consis_para.item())
-                    assert (not torch.isnan(loss_eq))
-                else:
-                    loss = alpha * loss_dps + gamma1 * loss_consis + gamma2 * loss_consis_para
-                    tqdm_setting.set_description(f'loss total: {loss.item():.5e} | loss dps: {alpha * loss_dps.item():.5e} | loss consis: {gamma1 * loss_consis.item():.5e}')
-                    losses['loss'].append(loss.item())
-                    losses['loss_dps'].append(loss_dps.item())
-                    losses['loss_consis'].append(loss_consis.item())
-                    losses['loss_consis_para'].append(loss_consis_para.item())
+                loss = alpha * loss_dps + beta1 * loss_consis + beta2 * loss_consis_para
+                tqdm_setting.set_description(f'loss total: {loss.item():.5e} | loss obs.: {alpha * loss_dps.item():.5e} | loss consis.: {beta1 * loss_consis.item():.5e}')
+                losses['loss'].append(loss.item())
+                losses['loss_dps'].append(loss_dps.item())
+                losses['loss_consis'].append(loss_consis.item())
+                losses['loss_consis_para'].append(loss_consis_para.item())
                 dx = torch.autograd.grad(loss, inp)[0]
                 dx = torch.clamp(dx, min=-1e8, max=1e8)
                 temp = temp_u - dx     # (batch*b)*(nf*c+npara)*h*w
