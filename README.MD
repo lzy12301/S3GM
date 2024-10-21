@@ -26,7 +26,7 @@ For customized 1D/2D datasets, you can follow the data format/shape described in
 
 To start pretraining from scratch, run the following command for KSE (with a single GPU):
 
-    CUDA_VISIBLE_DEVICES=0 python train.py --data kse --version <version> --dims 1 --epochs 200 --batch_size 64 --train_split 0.9 --num_components 1 --num_conditions 1 --attn_resolutions 16 --ch_mult 1 2 4 8 --data_location ./data/kse/KSE_train.npy --verbose 1
+    CUDA_VISIBLE_DEVICES=0 python train.py --data kse --version <version> --dims 1 --epochs 200 --batch_size 50 --train_split 0.9 --num_components 1 --num_conditions 1 --attn_resolutions 16 --ch_mult 1 2 4 8 --data_location ./data/kse/KSE_train.npy --verbose 1
 
 or Kolmogorov flow (with a single GPU):
 
