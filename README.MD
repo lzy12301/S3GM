@@ -1,6 +1,6 @@
 # S<sup>3</sup>GM: Learning spatiotemporal dynamics with a pretrained generative model
 
-This repository is the source code for paper "Learning spatiotemporal dynamics with a pretrained generative model" published in _Nature Machine Intelligence_ (2024).
+This repository is the source code for paper "[Learning spatiotemporal dynamics with a pretrained generative model](https://doi.org/10.1038/s42256-024-00938-z)" published in _Nature Machine Intelligence_ (2024).
 
 Our proposed method (**S**parse-**S**ensor-assisted **S**core-based **G**enerative **M**odel, S<sup>3</sup>GM) tackles the challenge of reconstructing nonlinear spatiotemporal dynamics from sparse sensor data. S<sup>3</sup>GM contains two stages: __(1) learning complex dynamics through unconditioned pretraining; (2) using dynamic-informed sampling based on sparse measurements for accurate predictions__. It excels in zero-shot reconstruction, showing strong accuracy and generalization even with extremely sparse or noisy data. 
 
