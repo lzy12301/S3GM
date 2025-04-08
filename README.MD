@@ -16,9 +16,9 @@ Create and enter your own Python virtual environment, and then run
 
 ## 2. Data Preparation
 
-You can download the datasets for a 1D case (Kuramoto-Sivashinsky equation, KSE) and a 2D case (Kolmogorov flow) via Zenodo repository at https://doi.org/10.5281/zenodo.13925732. After downloading, copy the files to './data' directory under the root path of the project (by default, the training and test datasets for KSE are put under the './data/kse' directory, and the training and test datasets for Kolmogorov flow are under the './data/kolmogorov' directory).
+You can download the datasets for a 1D case (Kuramoto-Sivashinsky equation, KSE) and a 2D case (Kolmogorov flow) via Zenodo repository at https://doi.org/10.5281/zenodo.14607274. After downloading, copy the files to './data' directory under the root path of the project (by default, the training and test datasets for KSE are put under the './data/kse' directory, and the training and test datasets for Kolmogorov flow are under the './data/kolmogorov' directory).
 
-For customized 1D/2D datasets, you can follow the data format/shape described in https://doi.org/10.5281/zenodo.13925732.
+For customized 1D/2D datasets, you can follow the data format/shape described in https://doi.org/10.5281/zenodo.14607274.
 
 
 
